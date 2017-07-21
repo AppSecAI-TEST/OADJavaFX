@@ -41,9 +41,9 @@ public class Question {
             double correctAnswer = value1 + value2;
             correct = (userAnswer == correctAnswer);
             if (correct) {
-                result.setText("correct");
+                result.setText("correct :)");
             } else {
-                result.setText("incorrect");
+                result.setText("incorrect :(");
             }
         }
         catch (Exception e)
