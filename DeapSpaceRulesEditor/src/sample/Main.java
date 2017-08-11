@@ -13,8 +13,8 @@ import javafx.stage.Stage;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Observable;
 import java.util.Optional;
+import java.sql.*;
 
 public class Main extends Application {
 
@@ -22,12 +22,23 @@ public class Main extends Application {
     private TableView<Rule> theTable;
     private ObservableList<Rule> tableData;
     private String fileName = "DarkSpaceRules.csv";
+    String databaseURL = "jdbc:mysql://localhost:3306/darkspace";
+    String username = "root";
+    String password = "";
+    private Connection connection = null;
+    private Statement statement = null;
+
 
 
 
     @Override
     public void start(Stage primaryStage) throws Exception{
+
+        // load the JDBC driver
+        Class.forName("com.mysql.jdbc.Driver");
+
         rulesArray = new ArrayList<Rule>();
+        tableData = FXCollections.observableArrayList(rulesArray);
         loadRulesFile(fileName);
         build(primaryStage);
         primaryStage.show();
@@ -68,13 +79,11 @@ public class Main extends Application {
         });
         buttonsContainer.getChildren().add(removeBtn);
         //saveChanges (taps into property listener)
-        Button saveChangesBtn = new Button("Save Changes to File");
-        saveChangesBtn.setOnAction(e->{
-            saveRules(e);
-        });
-        buttonsContainer.getChildren().add(saveChangesBtn);
-
-
+        //Button saveChangesBtn = new Button("Save Changes to File");
+        //saveChangesBtn.setOnAction(e->{
+        //    saveRules(e);
+        //});
+        //buttonsContainer.getChildren().add(saveChangesBtn);
 
         root.getChildren().addAll(buttonsContainer,textFields,theTable);
         primaryStage.setScene(new Scene(root));
@@ -97,14 +106,43 @@ public class Main extends Application {
         selectedRule.loadSelfIntoTextFields();
     }
 
+    public int updateOrInsert(Rule R)
+    {
+        try
+        {
+            // connect to the database
+            connection = DriverManager.getConnection(databaseURL,username, password );
+
+            // create a statement object
+            statement = connection.createStatement();
+
+            String updateRule = R.toSQLInsertOrUpdate();
+            System.out.println(updateRule);
+            int rs = statement.executeUpdate(updateRule);
+            System.out.println("executeUpdate return: " + rs);
+
+            connection.close();
+            return rs;
+        }
+        catch (Exception ex)
+        {
+            System.out.println(ex);
+        }
+        return -1;
+    }
+
     public void update(ActionEvent e)
     {
         Rule selectedRule = theTable.getSelectionModel().getSelectedItem();
+        rulesArray = new ArrayList<Rule>();
+        tableData = FXCollections.observableArrayList(rulesArray);
         if(selectedRule == null) return;
         selectedRule.updateSelfFromTextFields();
         //force visual update on table view
         tableData.remove(selectedRule);
         tableData.add(selectedRule);
+
+        updateOrInsert(selectedRule);
     }
 
     public void add(ActionEvent e)
@@ -113,6 +151,9 @@ public class Main extends Application {
         R.updateSelfFromTextFields();
         tableData.add(R);
         rulesArray.add(R);
+
+        updateOrInsert(R);
+
     }
 
     public void remove(ActionEvent e)
@@ -121,20 +162,21 @@ public class Main extends Application {
         if(selectedRule == null) return;
         tableData.remove(selectedRule);
         Rule.unsavedRulesChanges = true;
-    }
 
-    public void saveRules(ActionEvent e)
-    {
         try
         {
-            BufferedWriter bWriter = new BufferedWriter(new FileWriter(fileName,false));
-            bWriter.write(Rule.headersToCSV());
-            for (Rule R: tableData)
-            {
-                bWriter.write( "\n" + R.toCSV());
-            }
-            bWriter.flush();
-            bWriter.close();
+            // connect to the database
+            connection = DriverManager.getConnection(databaseURL,username, password );
+
+            // create a statement object
+            statement = connection.createStatement();
+
+            String deleteRule = selectedRule.toSQLDelete();
+            System.out.println(deleteRule);
+            int rs = statement.executeUpdate(deleteRule);
+            System.out.println("executeUpdate return: " + rs);
+
+            connection.close();
         }
         catch (Exception ex)
         {
@@ -142,42 +184,100 @@ public class Main extends Application {
         }
     }
 
+    public void saveRules(ActionEvent e)
+    {
+        try
+        {
+            // connect to the database
+            connection = DriverManager.getConnection(databaseURL,username, password );
+
+            // create a statement object
+            statement = connection.createStatement();
+
+            for (Rule R: tableData)
+            {
+                System.out.println(R.toSQLInsertOrUpdate());
+                int rs = statement.executeUpdate(R.toSQLInsertOrUpdate());
+                System.out.println("executeUpdate return: " + rs);
+            }
+
+            connection.close();
+        }
+        catch (Exception ex)
+        {
+            System.out.println(ex);
+
+        }
+    }
+
     public void loadRulesFile(String fileName)
     {
-        //check if file exists
-        File fileCheck = new File(fileName);
-        tableData = FXCollections.observableArrayList();
-        try {
-            if (!fileCheck.exists()) {
-                BufferedWriter newRules = new BufferedWriter(new FileWriter(fileName,false));
-                String HeadingsLine = Rule.defaultColumnHeadings[0];
-                for (int i = 1; i < Rule.defaultColumnHeadings.length; i++)
-                {
-                    HeadingsLine += "," + Rule.defaultColumnHeadings[i];
-                }
-                newRules.write(HeadingsLine + "\n");
-                newRules.flush();
-                newRules.close();
-                Rule.loadHeadings(HeadingsLine);
-                theTable = Rule.buildTableView();
-            }
-            else
+        theTable = Rule.buildTableView();
+
+        try
+        {
+            // connect to the database
+            connection = DriverManager.getConnection(databaseURL,username, password );
+
+            // create a statement object
+            statement = connection.createStatement();
+
+            ResultSet rs = statement.executeQuery("SELECT * FROM darkspacerules");
+
+            theTable.setItems(tableData);
+
+            while (rs.next())
             {
-                BufferedReader rules = new BufferedReader(new FileReader(fileName));
-                String HeadingsLine = rules.readLine();
-                Rule.loadHeadings(HeadingsLine);
-                theTable = Rule.buildTableView();
-                theTable.setItems(tableData);
-                String line = rules.readLine();
-                while (line != null){
-                    Rule tempRule = new Rule(line);
-                    rulesArray.add(tempRule);
-                    tableData.add(tempRule);
-                    line = rules.readLine();
-                }
+                //rs.getString(
+                //rs.getDouble(
+                HashMap<String,Object> row = new HashMap<>();
+                row.put("ObjectName",rs.getString("ObjectName"));
+                System.out.println(rs.getString("ObjectName"));
+                row.put("foodP",new Double(rs.getDouble("foodP")));
+                System.out.println(new Double(rs.getDouble("foodP")));
+                row.put("waterP",new Double(rs.getDouble("waterP")));
+                System.out.println(new Double(rs.getDouble("waterP")));
+                row.put("housingP",new Double(rs.getDouble("housingP")));
+                System.out.println(new Double(rs.getDouble("housingP")));
+                row.put("elecP",new Double(rs.getDouble("elecP")));
+                System.out.println(new Double(rs.getDouble("elecP")));
+                row.put("metalP",new Double(rs.getDouble("metalP")));
+                System.out.println(new Double(rs.getDouble("metalP")));
+                row.put("metalBC",new Double(rs.getDouble("metalBC")));
+                System.out.println(new Double(rs.getDouble("metalBC")));
+                row.put("minutesBC",new Double(rs.getDouble("minutesBC")));
+                System.out.println(new Double(rs.getDouble("minutesBC")));
+                row.put("elecOC",new Double(rs.getDouble("elecOC")));
+                System.out.println(new Double(rs.getDouble("elecOC")));
+                row.put("popOC",new Double(rs.getDouble("popOC")));
+                System.out.println(new Double(rs.getDouble("popOC")));
+                row.put("healthBS",new Double(rs.getDouble("healthBS")));
+                System.out.println(new Double(rs.getDouble("healthBS")));
+                row.put("speedKmpsBS",new Double(rs.getDouble("speedKmpsBS")));
+                System.out.println(new Double(rs.getDouble("speedKmpsBS")));
+                row.put("attackBS",new Double(rs.getDouble("attackBS")));
+                System.out.println(new Double(rs.getDouble("attackBS")));
+                row.put("armorTypeBS",rs.getString("armorTypeBS"));
+                System.out.println(rs.getString("armorTypeBS"));
+                row.put("weaknessBS",rs.getString("weaknessBS"));
+                System.out.println(rs.getString("weaknessBS"));
+                row.put("strengthBS",rs.getString("strengthBS"));
+                System.out.println(rs.getString("strengthBS"));
+                row.put("modifireBS", new Double(rs.getString("modifireBS")));
+                System.out.println(new Double(rs.getDouble("modifireBS")));
+                row.put("ID", new Double(rs.getDouble("ID")));
+                System.out.println(new Double(rs.getDouble("ID")));
+
+                System.out.println(row);
+
+                Rule R = new Rule(row);
+                rulesArray.add(R);
+                tableData.add(R);
             }
+
+            connection.close();
         }
-        catch (IOException e)
+        catch (Exception e)
         {
             System.out.println(e);
         }

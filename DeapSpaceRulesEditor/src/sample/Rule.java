@@ -11,25 +11,7 @@ import java.util.HashMap;
  * Created by kroge on 7/08/2017.
  */
 public class Rule {
-    public static String[] defaultColumnHeadings = {
-            "object_type",
-            "food_P",
-            "water_P",
-            "housing_P",
-            "elec_P",
-            "metal_P",
-            "metal_BC",
-            "minutes_BC",
-            "elec_OC",
-            "pop_OC",
-            "health_BS",
-            "speed_kmps_BS",
-            "attack_BS",
-            "armor_type_BS",
-            "weakness_BS",
-            "strength_BS",
-            "modifier_BS"
-    };
+
     private static HashMap<String, TextField> inputFields;
 
     public void loadSelfIntoTextFields()
@@ -82,7 +64,25 @@ public class Rule {
     public static boolean unsavedIndividualRuleChanges = false;
     public static boolean unsavedRulesChanges = false;
 
-    private static String[] columnHeadings;
+    private static String[] columnHeadings = {
+        "object_type",
+                "food_P",
+                "water_P",
+                "housing_P",
+                "elec_P",
+                "metal_P",
+                "metal_BC",
+                "minutes_BC",
+                "elec_OC",
+                "pop_OC",
+                "health_BS",
+                "speed_kmps_BS",
+                "attack_BS",
+                "armor_type_BS",
+                "weakness_BS",
+                "strength_BS",
+                "modifier_BS"
+    };
     public static boolean loadHeadings(String CSVHeadingsLine)
     {
         columnHeadings = CSVHeadingsLine.split(",");
@@ -143,6 +143,7 @@ public class Rule {
         return TFContainer;
     }
 
+    private double id = -1;
     private String object_type = "---";
     private double food_P = 0.0;
     private double water_P = 0.0;
@@ -203,9 +204,9 @@ public class Rule {
     public Rule()
     {    }
 
-    public Rule(String CSVValues)
+    public Rule(HashMap<String, Object> values)
     {
-        update(CSVValues);
+        update(values);
     }
 
     public static String headersToCSV()
@@ -241,26 +242,119 @@ public class Rule {
         return CSV;
     }
 
-    public void update(String CSVValues)
+    public String toSQLDelete()
     {
-        String[] StringArrayValues = CSVValues.split(",");
-        object_type = StringArrayValues[0];//object_type,,,,,,,,,,,,,,
-        food_P = new Double(StringArrayValues[1]);//food_P
-        water_P = new Double(StringArrayValues[2]);//water_P
-        housing_P = new Double(StringArrayValues[3]);//housing_P
-        elec_P = new Double(StringArrayValues[4]);//elec_P
-        metal_P = new Double(StringArrayValues[5]);//metal_P
-        metal_BC = new Double(StringArrayValues[6]);//metal_BC
-        minutes_BC = new Double(StringArrayValues[7]);//minutes_BC
-        elec_OC = new Double(StringArrayValues[8]);//elec_OC
-        pop_OC = new Double(StringArrayValues[9]);//pop_OC
-        health_BS = new Double(StringArrayValues[10]);//health_BS
-        speed_kmps_BS = new Double(StringArrayValues[11]);//speed_kmps_BS
-        attack_BS = new Double(StringArrayValues[12]);//attack_BS
-        armor_type_BS = StringArrayValues[13];//armor_type_BS
-        weakness_BS = StringArrayValues[14];//weakness_BS
-        strength_BS = StringArrayValues[15];//strength_BS
-        modifier_BS = new Double(StringArrayValues[16]);//modifier_BS
+        return "DELETE FROM darkspacerules WHERE ID=" + id;
+    }
+
+    public String toSQLInsertOrUpdate()
+    {
+        if (id < 0) {
+            String start = "INSERT INTO darkspacerules ";
+            String columns = "(";
+            String values = " VALUES (";
+            columns += "ObjectName,";
+            values += "\"" + object_type + "\",";
+            columns += "foodP,";
+            values += food_P + ",";
+            columns += "waterP,";
+            values += water_P + ",";
+            columns += "housingP,";
+            values += housing_P + ",";
+            columns += "elecP,";
+            values += elec_P + ",";
+            columns += "metalP,";
+            values += metal_P + ",";
+            columns += "metalBC,";
+            values += metal_BC + ",";
+            columns += "minutesBC,";
+            values += minutes_BC + ",";
+            columns += "elecOC,";
+            values += elec_OC + ",";
+            columns += "popOC,";
+            values += pop_OC + ",";
+            columns += "healthBS,";
+            values += health_BS + ",";
+            columns += "speedKmpsBS,";
+            values += speed_kmps_BS + ",";
+            columns += "attackBS,";
+            values += attack_BS + ",";
+            columns += "armorTypeBS,";
+            values += "\"" + armor_type_BS + "\",";
+            columns += "weaknessBS,";
+            values += "\"" + weakness_BS + "\",";
+            columns += "strengthBS,";
+            values += "\"" + strength_BS + "\",";
+            columns += "modifireBS)";
+            values += modifier_BS + ")";
+
+            return start + columns + values;
+        }
+        else
+        {
+            String start = "UPDATE darkspacerules ";
+            String values = "SET ";
+            values += "ObjectName=";
+            values += "\"" + object_type + "\",";
+            values += "foodP=";
+            values += food_P + ",";
+            values += "waterP=";
+            values += water_P + ",";
+            values += "housingP=";
+            values += housing_P + ",";
+            values += "elecP=";
+            values += elec_P + ",";
+            values += "metalP=";
+            values += metal_P + ",";
+            values += "metalBC=";
+            values += metal_BC + ",";
+            values += "minutesBC=";
+            values += minutes_BC + ",";
+            values += "elecOC=";
+            values += elec_OC + ",";
+            values += "popOC=";
+            values += pop_OC + ",";
+            values += "healthBS=";
+            values += health_BS + ",";
+            values += "speedKmpsBS=";
+            values += speed_kmps_BS + ",";
+            values += "attackBS=";
+            values += attack_BS + ",";
+            values += "armorTypeBS=";
+            values += "\"" + armor_type_BS + "\",";
+            values += "weaknessBS=";
+            values += "\"" + weakness_BS + "\",";
+            values += "strengthBS=";
+            values += "\"" + strength_BS + "\",";
+            values += "modifireBS=";
+            values += modifier_BS + ")";
+
+            return start + values + " WHERE ID=" + id;
+        }
+    }
+
+    public void update(HashMap<String, Object> CSVValues)
+    {
+        //String[] StringArrayValues = CSVValues.split(",");
+
+        object_type = (String)CSVValues.get("ObjectName");
+        food_P = (Double)CSVValues.get("foodP");
+        water_P = (Double)CSVValues.get("waterP");
+        housing_P = (Double)CSVValues.get("housingP");
+        elec_P = (Double)CSVValues.get("elecP");
+        metal_P = (Double)CSVValues.get("metalP");
+        metal_BC = (Double)CSVValues.get("metalBC");
+        minutes_BC = (Double)CSVValues.get("minutesBC");
+        elec_OC = (Double)CSVValues.get("elecOC");
+        pop_OC = (Double)CSVValues.get("popOC");
+        health_BS = (Double)CSVValues.get("healthBS");
+        speed_kmps_BS = (Double)CSVValues.get("speedKmpsBS");
+        attack_BS = (Double)CSVValues.get("attackBS");
+        armor_type_BS = (String)CSVValues.get("armorTypeBS");
+        weakness_BS = (String)CSVValues.get("weaknessBS");
+        strength_BS = (String)CSVValues.get("strengthBS");
+        modifier_BS = (Double)CSVValues.get("modifireBS");
+        id = (Double)CSVValues.get("ID");
     }
 
 }
